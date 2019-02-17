@@ -84,6 +84,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             WorkerDispatcher newDispatch = new WorkerDispatcher(jobRequestMessage.JobId, jobRequestMessage.RequestId);
             if (_agentSetting.OneTime)
             {
+                Trace.Info("Start dispatcher for one time used agent.");
                 newDispatch.WorkerDispatch = RunOnceAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
             }
             else
@@ -145,7 +146,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     }
                     catch (Exception ex)
                     {
-                        Trace.Error($"Worker Dispatch failed witn an exception for job request {currentDispatch.JobId}.");
+                        Trace.Error($"Worker Dispatch failed with an exception for job request {currentDispatch.JobId}.");
                         Trace.Error(ex);
                     }
                     finally
@@ -291,6 +292,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
             }
             finally
             {
+                Trace.Info("Fire signal for one time used agent.");
                 _oneTimeJobCompleted.TrySetResult(true);
             }
         }
