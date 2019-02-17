@@ -298,6 +298,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                 public static readonly string JobStatus = "agent.jobstatus";
                 public static readonly string MachineName = "agent.machinename";
                 public static readonly string Name = "agent.name";
+                public static readonly string OneTime = "agent.onetime";
                 public static readonly string OS = "agent.os";
                 public static readonly string OSArchitecture = "agent.osarchitecture";
                 public static readonly string OSVersion = "agent.osversion";

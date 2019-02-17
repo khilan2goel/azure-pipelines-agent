@@ -490,8 +490,10 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 }
             }
 
+            var configStore = HostContext.GetService<IConfigurationStore>();
+
             // Runtime option variables
-            var runtimeOptions = HostContext.GetService<IConfigurationStore>().GetAgentRuntimeOptions();
+            var runtimeOptions = configStore.GetAgentRuntimeOptions();
             if (runtimeOptions != null)
             {
 #if OS_WINDOWS
@@ -499,7 +501,14 @@ namespace Microsoft.VisualStudio.Services.Agent.Worker
                 {
                     Variables.Set(Constants.Variables.Agent.GitUseSChannel, runtimeOptions.GitUseSecureChannel.ToString());
                 }
-#endif                
+#endif
+            }
+
+            // agent setting variables
+            var agentSettings = configStore.GetSettings();
+            if (agentSettings.OneTime)
+            {
+                Variables.Set(Constants.Variables.Agent.OneTime, agentSettings.OneTime.ToString());
             }
 
             // Job timeline record.
