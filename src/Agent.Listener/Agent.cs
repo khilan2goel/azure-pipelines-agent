@@ -296,6 +296,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                     bool disableAutoUpdate = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("agent.disableupdate"));
                     bool autoUpdateInProgress = false;
                     Task<bool> selfUpdateTask = null;
+                    bool oneTimeJobReceived = false;
                     jobDispatcher = HostContext.CreateService<IJobDispatcher>();
 
                     while (!HostContext.AgentShutdownToken.IsCancellationRequested)
@@ -335,6 +336,28 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                 }
                             }
 
+                            if (oneTimeJobReceived)
+                            {
+                                Trace.Verbose("One time used agent has start running its job, waiting for getNextMessage or the job to finish.");
+                                Task completeTask = await Task.WhenAny(getNextMessage, jobDispatcher.OneTimeJobCompleted.Task);
+                                if (completeTask == jobDispatcher.OneTimeJobCompleted.Task)
+                                {
+                                    Trace.Info("Job has finished at backend, the agent will exit since it is running under onetime use mode.");
+                                    Trace.Info("Stop message queue looping.");
+                                    messageQueueLoopTokenSource.Cancel();
+                                    try
+                                    {
+                                        await getNextMessage;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.Info($"Ignore any exception after cancel message loop. {ex}");
+                                    }
+
+                                    return Constants.Agent.ReturnCode.Success;
+                                }
+                            }
+
                             message = await getNextMessage; //get next message
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
                             if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
@@ -362,7 +385,7 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                             else if (string.Equals(message.MessageType, JobRequestMessageTypes.AgentJobRequest, StringComparison.OrdinalIgnoreCase) ||
                                     string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest, StringComparison.OrdinalIgnoreCase))
                             {
-                                if (autoUpdateInProgress)
+                                if (autoUpdateInProgress || oneTimeJobReceived)
                                 {
                                     skipMessageDeletion = true;
                                 }
@@ -381,13 +404,18 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                     }
 
                                     jobDispatcher.Run(pipelineJobMessage);
+                                    if (settings.OneTime)
+                                    {
+                                        Trace.Info("One time used agent received job message.");
+                                        oneTimeJobReceived = true;
+                                    }
                                 }
                             }
                             else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
                                 bool jobCancelled = jobDispatcher.Cancel(cancelJobMessage);
-                                skipMessageDeletion = autoUpdateInProgress && !jobCancelled;
+                                skipMessageDeletion = (autoUpdateInProgress || oneTimeJobReceived) && !jobCancelled;
                             }
                             else
                             {
