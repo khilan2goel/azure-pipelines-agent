@@ -155,6 +155,16 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                 var store = HostContext.GetService<IConfigurationStore>();
                 bool configuredAsService = store.IsServiceConfigured();
 
+                // Check whether the agent instance has been used as a one time use agent.
+                var usedRecordFile = HostContext.GetConfigFile(WellKnownConfigFile.Used);
+                if (File.Exists(usedRecordFile))
+                {
+                    Trace.Info("Agent has been used, won't take new jobs.");
+                    var record = IOUtil.LoadObject<AgentConsumptionRecord>(usedRecordFile);
+                    _term.WriteError($"Job request {record.RequestId} from pipeline job '{record.Info?.Owner?.Name ?? string.Empty} ({record.Info?.Definition?.Name ?? string.Empty})' has run on this agent at {record.ReceiveTime}.");
+                    return Constants.Agent.ReturnCode.TerminatedError;
+                }
+
                 // Run agent
                 //if (command.Run) // this line is current break machine provisioner.
                 //{
@@ -408,6 +418,17 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener
                                     {
                                         Trace.Info("One time used agent received job message.");
                                         oneTimeJobReceived = true;
+
+                                        Trace.Info("Saving job info and mark the agent as used.");
+                                        var usedRecord = new AgentConsumptionRecord()
+                                        {
+                                            RequestId = pipelineJobMessage.RequestId,
+                                            ReceiveTime = DateTime.UtcNow,
+                                            Info = pipelineJobMessage.Plan
+                                        };
+                                        var usedRecordFile = HostContext.GetConfigFile(WellKnownConfigFile.Used);
+                                        IOUtil.SaveObject(usedRecord, usedRecordFile);
+                                        Trace.Info("Agent consumption record has been saved.");
                                     }
                                 }
                             }

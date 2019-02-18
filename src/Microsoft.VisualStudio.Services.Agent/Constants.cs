@@ -37,6 +37,7 @@ namespace Microsoft.VisualStudio.Services.Agent
         ProxyBypass,
         Autologon,
         Options,
+        Used
     }
 
     public static class Constants
@@ -165,6 +166,7 @@ namespace Microsoft.VisualStudio.Services.Agent
                     public static readonly string Replace = "replace";
                     public static readonly string NoRestart = "norestart";
                     public static readonly string LaunchBrowser = "launchbrowser";
+                    public static readonly string OneTime = "onetime";
                     public static readonly string RunAsAutoLogon = "runasautologon";
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string SslSkipCertValidation = "sslskipcertvalidation";

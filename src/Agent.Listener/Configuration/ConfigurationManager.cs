@@ -412,6 +412,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Listener.Configuration
 
             agentSettings.NotificationSocketAddress = command.GetNotificationSocketAddress();
 
+            // one time use agent.
+            if (command.OneTimeUse)
+            {
+                agentSettings.OneTime = true;
+            }
+
             _store.SaveSettings(agentSettings);
 
             if (saveProxySetting)

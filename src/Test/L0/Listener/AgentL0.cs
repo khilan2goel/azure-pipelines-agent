@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Xunit;
 using Microsoft.VisualStudio.Services.WebApi;
 using Pipelines = Microsoft.TeamFoundation.DistributedTask.Pipelines;
+using Microsoft.VisualStudio.Services.Agent.Util;
 
 namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
 {
@@ -274,6 +275,62 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests.Listener
                 await agent.ExecuteCommand(command);
 
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Agent")]
+        public async void BlockFurtherJobForOneTimeAgent()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var usedRecordFile = hc.GetConfigFile(WellKnownConfigFile.Used);
+                try
+                {
+                    var usedRecord = new AgentConsumptionRecord()
+                    {
+                        RequestId = 1,
+                        ReceiveTime = DateTime.UtcNow,
+                        Info = new TaskOrchestrationPlanReference()
+                        {
+                            Definition = new TaskOrchestrationOwner() { Name = "test" },
+                            Owner = new TaskOrchestrationOwner() { Name = "test" }
+                        }
+                    };
+                    IOUtil.SaveObject(usedRecord, usedRecordFile);
+
+                    hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                    hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                    hc.SetSingleton<IMessageListener>(_messageListener.Object);
+                    hc.SetSingleton<IVstsAgentWebProxy>(_proxy.Object);
+                    hc.SetSingleton<IAgentCertificateManager>(_cert.Object);
+                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+
+                    var command = new CommandSettings(hc, new string[] { });
+
+                    _configurationManager.Setup(x => x.IsConfigured()).
+                        Returns(true);
+                    _configurationManager.Setup(x => x.LoadSettings())
+                        .Returns(new AgentSettings { });
+
+                    _configStore.Setup(x => x.IsServiceConfigured())
+                        .Returns(false);
+
+                    _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                        .Returns(Task.FromResult(false));
+
+                    var agent = new Agent.Listener.Agent();
+                    agent.Initialize(hc);
+                    var returnCode = await agent.ExecuteCommand(command);
+
+                    _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Never());
+                    Assert.Equal(returnCode, Constants.Agent.ReturnCode.TerminatedError);
+                }
+                finally
+                {
+                    IOUtil.DeleteFile(usedRecordFile);
+                }
             }
         }
     }

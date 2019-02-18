@@ -326,6 +326,12 @@ namespace Microsoft.VisualStudio.Services.Agent.Tests
                         GetDirectory(WellKnownDirectory.Root),
                         ".options");
                     break;
+
+                case WellKnownConfigFile.Used:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".used");
+                    break;
                 default:
                     throw new NotSupportedException($"Unexpected well known config file: '{configFile}'");
             }

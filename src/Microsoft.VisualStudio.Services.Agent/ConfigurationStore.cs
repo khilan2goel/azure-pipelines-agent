@@ -1,4 +1,6 @@
+using Microsoft.TeamFoundation.DistributedTask.WebApi;
 using Microsoft.VisualStudio.Services.Agent.Util;
+using System;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Text;
@@ -86,6 +88,19 @@ namespace Microsoft.VisualStudio.Services.Agent
         [DataMember(EmitDefaultValue = false)]
         public bool GitUseSecureChannel { get; set; }
 #endif
+    }
+
+    [DataContract]
+    public sealed class AgentConsumptionRecord
+    {
+        [DataMember(IsRequired = true)]
+        public long RequestId { get; set; }
+
+        [DataMember(IsRequired = true)]
+        public DateTime ReceiveTime { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public TaskOrchestrationPlanReference Info { get; set; }
     }
 
     [ServiceLocator(Default = typeof(ConfigurationStore))]
